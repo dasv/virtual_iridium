@@ -2,6 +2,7 @@
 import serial
 #from serial.tools import list_ports
 import os
+import binascii
 from optparse import OptionParser
 import io
 import time
@@ -70,7 +71,7 @@ mo_ip = '127.0.0.1'
 mo_port = 10801
 mt_port = 10800
 
-imei = 300234060379270
+imei = '0123456789ABCDE'
 
 post_url=''
 
@@ -141,7 +142,10 @@ def sendHTTPPost():
     global mo_buffer
     global momsn
     global imei
-    sendPost(post_url, imei, momsn, lat, lon, 0, mo_buffer)
+    print(mo_buffer)
+    hex_buffer = binascii.hexlify(mo_buffer)
+    print(hex_buffer)
+    sendPost(post_url, imei, momsn, lat, lon, 0, hex_buffer)
 
 def write_text(cmd,start_index):
     global mo_set
@@ -481,6 +485,7 @@ def parse_cmd(cmd):
     elif cmd_type == 'at+gmm'       : get_model()
     elif cmd_type == 'at+gsn'       : get_gsn()
     elif cmd_type == 'at+gmr'       : get_gmr()
+    elif cmd_type == 'at+cgmr'      : get_gmr()
     elif cmd_type == 'at+sbdwt'     : write_text(cmd,index + 1)
     elif cmd_type == 'at+sbdwb'     : write_binary_start(cmd,index + 1)
     elif cmd_type == 'at+sbdi'      : sbdi()
