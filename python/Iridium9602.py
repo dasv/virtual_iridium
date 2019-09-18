@@ -17,6 +17,8 @@ from virtual_iridium.sbd_packets import assemble_mo_directip_packet
 from virtual_iridium.sbd_packets import parse_mt_directip_packet
 from virtual_iridium.sbd_packets import assemble_mt_directip_response
 
+from virtual_iridium.http_stuff import sendPost
+
 AVERAGE_SBDIX_DELAY = 1     #TODO: implement randomness, average is ~30s
 STDEV_SBDIX_DELAY = 1 
 AVERAGE_SBDIX_SUCCESS = 0.9
@@ -69,6 +71,8 @@ mo_port = 10801
 mt_port = 10800
 
 imei = 300234060379270
+
+post_url=''
 
 email_enabled = False
 ip_enabled = False
@@ -130,6 +134,15 @@ Message is Attached.'\
 #         # Mac / Linux
 #         return [port[0] for port in list_ports.comports()]
 
+def sendHTTPPost():
+    global post_url
+    global lat
+    global lon
+    global mo_buffer
+    global momsn
+    global imei
+    sendPost(post_url, imei, momsn, lat, lon, 0, mo_buffer)
+
 def write_text(cmd,start_index):
     global mo_set
     global mo_buffer
@@ -185,6 +198,14 @@ def sbdix():
                 mt_set = True
             else:
                 received_msg_size = 0
+
+        if http_post_enabled:
+            #send e-mail if outgoing data is present
+            if mo_set and not mo_buffer == "":
+                if http_post_enabled:
+                    sendHTTPPost()
+                mo_set = False
+                momsn += 1
     
         elif ip_enabled:
             if mo_set and not mo_buffer == "":
@@ -575,6 +596,8 @@ def main():
     global mo_port
     global mt_port
 
+    global post_url
+
     global echo
 
 
@@ -590,6 +613,7 @@ def main():
     parser.add_option("--mt_port", dest="mt_port", action="store", help="Mobile-terminated DirectIP server Port", metavar="MT_PORT", default=10800)
     parser.add_option("-m", "--mode", dest="mode", action="store", help="Mode: EMAIL,HTTP_POST,IP,NONE", default="NONE", metavar="MODE")
     parser.add_option("-e", "--imei", dest="imei", action="store", help="IMEI for this modem", default="300234060379270", metavar="MODE")
+    parser.add_option("-s", "--http_srv", dest="post_url", action="store", help="Server path to post to in HTTP mode", default="NONE", metavar="HTTP_SRV")
 
     (options, args) = parser.parse_args()
 
@@ -603,8 +627,11 @@ def main():
         else:
             email_enabled = True
     elif options.mode == "HTTP_POST":
-        print 'Not implemented yet'
-        sys.exit()
+        if options.post_url is None:
+            print('If you want to use HTTP POST, you must specify an URL.')
+            sys.exit()
+        else:
+            http_post_enabled = True
     elif options.mode == "IP":
         print 'Using IP mode with MO ({}:{}) and MT (0.0.0.0:{}) servers'.format(options.mo_ip, int(options.mo_port), options.mt_port)
         server = MobileTerminatedServer('0.0.0.0', mt_port)
@@ -628,6 +655,8 @@ def main():
 
     now_get_checksum_first = False
     now_get_checksum_second = False
+
+    post_url = options.post_url
     
     try:
         ser = open_port(options.dev,19200)
